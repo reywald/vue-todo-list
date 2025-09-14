@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, type Reactive } from 'vue'
+import { computed, ref, type Ref, onMounted } from 'vue'
 import ListItem from './ListItem.vue'
 
 type Item = {
@@ -7,39 +7,66 @@ type Item = {
   checked?: boolean
 }
 
-const listItems: Reactive<Item[]> = reactive([
-  { title: 'Make a todo list app', checked: true },
-  { title: 'Predict the weather', checked: false },
-  { title: 'Play some tunes', checked: false },
-  { title: "Let's get cooking", checked: false },
-  { title: 'Pump some iron', checked: false },
-  { title: 'Track my expenses', checked: false },
-  { title: 'Organize a game night', checked: false },
-  { title: 'Learn a new language', checked: false },
-  { title: 'Publish my work' },
-])
+const storageItems: Ref<Item[]> = ref([])
+
+const initListItems = (): void => {
+  if (storageItems.value.length === 0) {
+    const listItems = [
+      { title: 'Make a todo list app', checked: true },
+      { title: 'Predict the weather', checked: false },
+      { title: 'Play some tunes', checked: false },
+      { title: "Let's get cooking", checked: false },
+      { title: 'Pump some iron', checked: false },
+      { title: 'Track my expenses', checked: false },
+      { title: 'Organize a game night', checked: false },
+      { title: 'Learn a new language', checked: false },
+      { title: 'Publish my work' },
+    ]
+
+    setToStorage(listItems)
+    storageItems.value = listItems
+  }
+}
 
 const updateItem = (item: Item): void => {
   const updatedItem = findItemInList(item)
-  updatedItem && toggleItemChecked(updatedItem)
+  if (updatedItem) {
+    toggleItemChecked(updatedItem)
+    setToStorage(storageItems.value)
+  }
 }
 
-const findItemInList = (item: Item): Item | undefined =>
-  listItems.find((itemInList: Item) => itemInList.title === item.title)
+const findItemInList = (item: Item): Item | undefined => {
+  return storageItems.value.find((itemInList: Item) => itemInList.title === item.title)
+}
 
 const toggleItemChecked = (item: Item): void => {
   item.checked = !item.checked
 }
 
 const sortedList = computed(() =>
-  listItems.sort((a, b) => (a.checked ? 1 : 0) - (b.checked ? 1 : 0)),
+  [...storageItems.value].sort((a, b) => (a.checked ? 1 : 0) - (b.checked ? 1 : 0)),
 )
+
+const setToStorage = (items: Item[]): void => {
+  localStorage.setItem('list-items', JSON.stringify(items))
+}
+
+const getFromStorage = (): Item[] | [] => {
+  const stored = localStorage.getItem('list-items')
+  return stored ? JSON.parse(stored) : []
+}
+
+onMounted(() => {
+  storageItems.value = getFromStorage()
+  initListItems()
+})
 </script>
 
 <template>
   <ul>
-    <li :key="key" v-for="(item, key) in sortedList">
-      <ListItem :is-checked="item.checked" @click="updateItem(item)">
+    <li v-for="(item, key) in sortedList" :key="key">
+      <ListItem :is-checked="item.checked" @click.prevent="updateItem(item)">
         {{ item.title }}
       </ListItem>
     </li>
